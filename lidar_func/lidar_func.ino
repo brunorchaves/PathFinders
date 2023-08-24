@@ -1,6 +1,6 @@
-# include <HardwareSerial.h>
+#include <HardwareSerial.h>
 #include <Arduino.h>
-#include <analogWrite.h>
+
 
 int PinTrigger1 = 18; // Pino usado para disparar os pulsos do sensor aereo
 int PinEcho1 = 19; // pino usado para ler a saida do sensor aereo
@@ -27,7 +27,8 @@ float TempEcho2 = 0;
 
 //const float VelocidadeSom_mpors = 340; // em metros por segundo
 const float VelocidadeSom_mporus = 0.000340; // em metros por microsegundo
-float cm = 0;
+float cm1 = 0;
+float cm2 = 0;
 
 HardwareSerial SerialPort(0);
 
