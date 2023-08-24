@@ -1,4 +1,33 @@
 # include <HardwareSerial.h>
+#include <Arduino.h>
+#include <analogWrite.h>
+
+int PinTrigger1 = 18; // Pino usado para disparar os pulsos do sensor aereo
+int PinEcho1 = 19; // pino usado para ler a saida do sensor aereo
+int PinTrigger2 = 16; // Pino usado para disparar os pulsos do sensor terrestre
+int PinEcho2 = 17; // pino usado para ler a saida do sensor terrestre
+
+
+int motor1 = 25;
+int motor2 = 26;
+
+//int vibracall = 25;
+int buzzer1 = 23; // buzzer referente ao sensor aereo
+int buzzer2 = 5; // buzzer referente ao sensor terrestre
+
+int freq1 = 2000; //para buzzer aereo
+int freq2 = 200; //para buzzer terrestre -- tem que testar esse valor na pratica ate achar uma frequencia grave boa
+int res = 8;
+int TONE_PWM_CHANNEL1 = 1;//para buzzer aereo
+int TONE_PWM_CHANNEL2 = 2; //para buzzer terrestre
+int tempo = 10000;
+
+float TempEcho1 = 0;
+float TempEcho2 = 0;
+
+//const float VelocidadeSom_mpors = 340; // em metros por segundo
+const float VelocidadeSom_mporus = 0.000340; // em metros por microsegundo
+float cm = 0;
 
 HardwareSerial SerialPort(0);
 
@@ -45,8 +74,6 @@ uint16_t i;
 return crc;
 }
 
-
-
 struct ponto
 {
   int dist,forca;
@@ -58,10 +85,46 @@ struct dados
   struct ponto pontos[];
 };
 
+void DisparaPulsoUltrassonico()
+{
+  // Para fazer o HC-SR04 enviar um pulso ultrassonico, nos temos
+  // que enviar para o pino de trigger um sinal de nivel alto
+  // com pelo menos 10us de duraçao
+  digitalWrite(PinTrigger1, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(PinTrigger1, LOW);
+  
+  digitalWrite(PinTrigger2, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(PinTrigger2, LOW);
+}
 
-void setup() {
+float CalculaDistancia(float tempo_us)
+{
+  return((tempo_us*VelocidadeSom_mporus)/2);
+}
+
+void setup() 
+{
  SerialPort.begin(230400, SERIAL_8N1,RXD,TXD); //UART 2
  typedef struct dados Struct;
+
+  // Configura pino de Trigger1 como saída e inicializa com nível baixo
+  pinMode(PinTrigger1, OUTPUT);
+  digitalWrite(PinTrigger1, LOW);
+  pinMode(PinEcho1, INPUT); // configura pino ECHO1 como entrada
+ // Configura pino de Trigger2 como saída e inicializa com nível baixo
+  pinMode(PinTrigger2, OUTPUT);
+  digitalWrite(PinTrigger2, LOW);
+  pinMode(PinEcho2, INPUT); // configura pino ECHO2 como entrada
+  
+  //pinMode (vibracall, OUTPUT);
+  pinMode (buzzer1, OUTPUT);
+  ledcSetup(TONE_PWM_CHANNEL1,freq1, res);
+  ledcAttachPin(buzzer1, TONE_PWM_CHANNEL1);
+  pinMode (buzzer2, OUTPUT);
+  ledcSetup(TONE_PWM_CHANNEL2,freq2, res);
+  ledcAttachPin(buzzer2, TONE_PWM_CHANNEL2);
 }
 
 void loop() 
@@ -69,6 +132,26 @@ void loop()
   typedef struct dados Struct;
   Struct s;
 
+  DisparaPulsoUltrassonico();
+  // Mede o tempo de duração do sinal no pino de leitura(us)
+  TempEcho1 = pulseIn(PinEcho1, HIGH);
+  cm1 = CalculaDistancia(TempEcho1)*100;
+  TempEcho2 = pulseIn(PinEcho2, HIGH);
+  cm2 = CalculaDistancia(TempEcho2)*100;
+  //analogWrite(vibracall,0); 
+ 
+  if(cm1 <= 200)
+  { //antes tava 2, nao sei se é so pq a gente tava testando ou oq, mas acho q pra ser 2m é isso ne
+    ledcWrite(TONE_PWM_CHANNEL1, tempo);
+    //delay(100);    -- tem que ver, talvez esse delay seja necessario se nao nao vai nem ouvir o barulho se for mt rapido
+    ledcWrite(TONE_PWM_CHANNEL1, 0); // Stop tone 
+  }
+  if(cm2 <= 200)
+  { 
+    ledcWrite(TONE_PWM_CHANNEL2, tempo);
+    //delay(100);   
+    ledcWrite(TONE_PWM_CHANNEL2, 0); // Stop tone     
+  }
     if(SerialPort.available())
     {
     int ver_len = 0;
@@ -259,15 +342,23 @@ void loop()
   {
     if(s.s_ang >= 9000 && s.s_ang <= 15000)
     {
-      Serial.println("Obstaculo esquerda");
+      //Serial.println("Obstaculo esquerda");
+      analogWrite(motor1,255);
+      delay(1);
+
     }
     else if(s.s_ang >= 15000 && s.s_ang <= 21000)
     {
-      Serial.println("Obstaculo frente");
+      //Serial.println("Obstaculo frente");
+      analogWrite(motor1,120);
+      analogWrite(motor2,120);
+      delay(1);
     }
     else if(s.s_ang >= 21000 && s.s_ang <= 27000)
     {
-      Serial.println("Obstaculo direita");
+      //Serial.println("Obstaculo direita");
+      analogWrite(motor2,255);
+      delay(1);
     }
   }
 }
